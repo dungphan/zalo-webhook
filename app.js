@@ -15,7 +15,7 @@ const http = require('http');
    // cert: fs.readFileSync('./cert.pem')
 // };
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8000;
 app.set('port', port);
 //const server = https.createServer(options, app);
 const server = http.createServer(app);
@@ -68,15 +68,18 @@ app.get('/api/zalo/gettoken', function (req, res) {
 });
 
 app.post('/api/zalo/events', function (req, res, next) {
+   //console.log(req.body);
    if (!req.body.event_name)
       return res.status(200).end();
-   switch (body.event_name) {
-   case user_send_text: {
-         if (body.message.text.startWiths('hello')){
+   switch (req.body.event_name) {
+   case 'user_send_text': {
+         //console.log(req.body.sender.id);
+         //break;
+         if (req.body.message.text.startWiths('hello')){
             // say hi
             res.status(200).end();
             // get user data
-            var userid = body.sender.id;
+            var userid = req.body.sender.id;
             var url = 'https://openapi.zalo.me/v2.0/oa/getprofile?access_token='+zaloAppToken+'&data={"user_id":"'+userid+'"}';
             request(url, function(err,response,body){
                if (err){
@@ -101,32 +104,32 @@ app.post('/api/zalo/events', function (req, res, next) {
                });
             });
          }
-         else if (body.message.text.startWiths('checkin')){
+         else if (req.body.message.text.startWiths('checkin')){
             res.status(200).end();
          }
          return;
       }
-   case user_received_message: {
+   case 'user_received_message': {
 
          break;
       }
-   case user_seen_message: {
+   case 'user_seen_message': {
 
          break;
       }
-   case follow: {
+   case 'follow': {
 
          break;
       }
-   case oa_send_text: {
+   case 'oa_send_text': {
 
          break;
       }
-   case oa_send_image: {
+   case 'oa_send_image': {
 
          break;
       }
-   case oa_send_list: {
+   case 'oa_send_list': {
 
          break;
       }
