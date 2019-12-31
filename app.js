@@ -6,17 +6,20 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 var cors = require('cors');
 const router = express.Router();
-const http = require('http');
-//const https = require('https');
+const tls = require('tls');
+
+//const http = require('http');
+const https = require('https');
 const options = {
-   key: fs.readFileSync('./zalo-webhook.key'),
-   cert: fs.readFileSync('./zalo-webhook.csr')
+   key: fs.readFileSync('./key.pem'),
+   cert: fs.readFileSync('./cert.pem')
 };
 const app = express();
-//const server = https.createServer(options, app);
-const server = http.createServer(app);
-var port = 80;
+var port = 443;
 app.set('port', port);
+const server = https.createServer(options, app);
+//const server = http.createServer(app);
+
 app.use(cors());
 
 ///
