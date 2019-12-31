@@ -15,7 +15,7 @@ const options = {
 const app = express();
 //const server = https.createServer(options, app);
 const server = http.createServer(app);
-var port = 3000;
+var port = 80;
 app.set('port', port);
 app.use(cors());
 
