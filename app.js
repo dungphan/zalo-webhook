@@ -23,9 +23,9 @@ const server = http.createServer(app);
 app.use(cors());
 
 ///
-const zaloAppId = '1998844287528533439';
-const zaloAppToken = 'nrBD9cEw8WZAMCqbOheY2inPmIDefsTVnJ7K73JCSZBsMjGQBk4oKCjSi7Ck-oX4Yr6P4K7jDasg2ueVM9ytSOC3aXzjdtP3Wmph8rUDTqoI0iqLDuPkGFqXppSCc4ztuJ3z6JAKRbNSQOqQCUyIRFzRe3GFmnru_qEh3L7O37IMIhyaFU0YIlf8mYOer2H_ntAc43Bd9atZSBHaFTKABTCqw7meXNS9xppNPGFRCHteIDvzHijMKBaimpiGfcH-ua27BYlbAcxmNimR1TThSZYTqDSQQQmh1G';
-const oaId = '';
+global.zaloAppId = '1998844287528533439';
+global.zaloAppToken = 'nrBD9cEw8WZAMCqbOheY2inPmIDefsTVnJ7K73JCSZBsMjGQBk4oKCjSi7Ck-oX4Yr6P4K7jDasg2ueVM9ytSOC3aXzjdtP3Wmph8rUDTqoI0iqLDuPkGFqXppSCc4ztuJ3z6JAKRbNSQOqQCUyIRFzRe3GFmnru_qEh3L7O37IMIhyaFU0YIlf8mYOer2H_ntAc43Bd9atZSBHaFTKABTCqw7meXNS9xppNPGFRCHteIDvzHijMKBaimpiGfcH-ua27BYlbAcxmNimR1TThSZYTqDSQQQmh1G';
+global.oaId = '';
 ///
 app.use(function (req, res, next) {
    res.header("Access-Control-Allow-Origin", "*");
