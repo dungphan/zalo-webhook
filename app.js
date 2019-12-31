@@ -41,13 +41,13 @@ app.use(bodyParser.json());
 
 app.get('/', function (req, res) {
    //res.header("Access-Control-Allow-Origin", "*");
-   res.send('hello world');
+   res.status(200).send('hello world');
 });
 
 ///
 ///
 ///
-router.get('/api/zalo/token', function (req, res) {
+app.get('/api/zalo/token', function (req, res) {
    //res.header("Access-Control-Allow-Origin", "*");
    if (req.query.access_token && req.quey.oaId){
       zaloAppToken = req.query.access_token;
@@ -56,7 +56,7 @@ router.get('/api/zalo/token', function (req, res) {
    res.status(200).end();
 });
 
-router.get('/api/zalo/gettoken', function (req, res) {
+app.get('/api/zalo/gettoken', function (req, res) {
    //res.header("Access-Control-Allow-Origin", "*");
    var url = 'https://oauth.zaloapp.com/v3/oa/permission?app_id='+zaloAppId+'&redirect_uri='+'http://' + req.headers['host'] + '/api/zalo/token';
    request(url,function(err, response, body){
@@ -67,7 +67,9 @@ router.get('/api/zalo/gettoken', function (req, res) {
    res.status(200).end();
 });
 
-router.post('/api/zalo/events', function (req, res, next) {
+app.post('/api/zalo/events', function (req, res, next) {
+   if (!req.body)
+      return res.status(200).end();
    var body = JSON.parse(req.body);
    switch (body.event_name) {
    case user_send_text: {
@@ -136,18 +138,19 @@ router.post('/api/zalo/events', function (req, res, next) {
 });
 
 // - /api/zalo/messagetouser - Params: userid, message
-router.post('/api/zalo/messagetouser', function (req, res, next) {
+app.post('/api/zalo/messagetouser', function (req, res, next) {
    var body = {
       "recipient": {
          "user_id": req.body.userid
       },
       "message": req.body.message
    };
+   res.status(200).end();
    //request.post({url:'http://service.com/upload', form: {key:'value'}}, function(err,httpResponse,body){ /* ... */ });
 });
 
 // - /api/zalo/broadcasttouser - Params: target, message
-router.post('/api/zalo/broadcasttouser', function (req, res, next) {
+app.post('/api/zalo/broadcasttouser', function (req, res, next) {
    var body = {
       "recipient": {
          "target": req.body.target
@@ -155,7 +158,7 @@ router.post('/api/zalo/broadcasttouser', function (req, res, next) {
       "message": req.body.message
    };
    //request.post({url:'http://service.com/upload', form: {key:'value'}}, function(err,httpResponse,body){ /* ... */ });
-   
+   res.status(200).end();
 });
 
 ///
