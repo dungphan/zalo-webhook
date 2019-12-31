@@ -68,7 +68,7 @@ app.get('/api/zalo/gettoken', function (req, res) {
 });
 
 app.post('/api/zalo/events', function (req, res, next) {
-   console.log('body';
+   console.log('body');
    console.log(req.body);
    if (!req.body.event_name)
       return res.status(200).end();
