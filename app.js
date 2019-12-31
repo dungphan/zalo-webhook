@@ -192,6 +192,13 @@ server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
 
+http.createServer(function (req, res) {
+      res.writeHead(301, {
+         "Location": "https://" + req.headers['host'] + req.url
+      });
+      res.end();
+   }).listen(80);
+
 function onError(error) {
    if (error.syscall !== 'listen') {
       throw error;
