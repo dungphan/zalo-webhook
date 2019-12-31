@@ -68,14 +68,16 @@ app.get('/api/zalo/gettoken', function (req, res) {
 });
 
 app.post('/api/zalo/events', function (req, res, next) {
-   //console.log(req.body);
+   console.log('body';
+   console.log(req.body);
    if (!req.body.event_name)
       return res.status(200).end();
    switch (req.body.event_name) {
    case 'user_send_text': {
          //console.log(req.body.sender.id);
          //break;
-         if (req.body.message.text.startWiths('hello')){
+         if (req.body.message.text.startsWith('hello')){
+            console.log('startsWith hello');
             // say hi
             res.status(200).end();
             // get user data
@@ -104,7 +106,7 @@ app.post('/api/zalo/events', function (req, res, next) {
                });
             });
          }
-         else if (req.body.message.text.startWiths('checkin')){
+         else if (req.body.message.text.startsWith('checkin')){
             res.status(200).end();
          }
          return;
