@@ -5,7 +5,7 @@ const logger = require('morgan');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 var cors = require('cors');
-
+const router = express.Router();
 const http = require('http');
 //const https = require('https');
 const options = {
@@ -21,7 +21,7 @@ app.use(cors());
 
 ///
 const zaloAppId = '1998844287528533439';
-const zaloAppToken = '';
+const zaloAppToken = 'nrBD9cEw8WZAMCqbOheY2inPmIDefsTVnJ7K73JCSZBsMjGQBk4oKCjSi7Ck-oX4Yr6P4K7jDasg2ueVM9ytSOC3aXzjdtP3Wmph8rUDTqoI0iqLDuPkGFqXppSCc4ztuJ3z6JAKRbNSQOqQCUyIRFzRe3GFmnru_qEh3L7O37IMIhyaFU0YIlf8mYOer2H_ntAc43Bd9atZSBHaFTKABTCqw7meXNS9xppNPGFRCHteIDvzHijMKBaimpiGfcH-ua27BYlbAcxmNimR1TThSZYTqDSQQQmh1G';
 const oaId = '';
 ///
 app.use(function (req, res, next) {
@@ -44,7 +44,7 @@ app.get('/', function (req, res) {
 ///
 ///
 ///
-app.get('/api/zalo/token', function (req, res) {
+router.get('/api/zalo/token', function (req, res) {
    //res.header("Access-Control-Allow-Origin", "*");
    if (req.query.access_token && req.quey.oaId){
       zaloAppToken = req.query.access_token;
@@ -53,7 +53,7 @@ app.get('/api/zalo/token', function (req, res) {
    res.status(200).end();
 });
 
-app.get('/api/zalo/gettoken', function (req, res) {
+router.get('/api/zalo/gettoken', function (req, res) {
    //res.header("Access-Control-Allow-Origin", "*");
    var url = 'https://oauth.zaloapp.com/v3/oa/permission?app_id='+zaloAppId+'&redirect_uri='+'http://' + req.headers['host'] + '/api/zalo/token';
    request(url,function(err, response, body){
@@ -75,8 +75,10 @@ router.post('/api/zalo/events', function (req, res, next) {
             var userid = body.sender.id;
             var url = 'https://openapi.zalo.me/v2.0/oa/getprofile?access_token='+zaloAppToken+'&data={"user_id":"'+userid+'"}';
             request(url, function(err,response,body){
-               if (err)
-                  break;
+               if (err){
+                  console.log(err);
+                  return;
+               }
                var username = body.data.display_name;
                // message back to user
                var url = 'https://openapi.zalo.me/v2.0/oa/message?access_token='+zaloAppToken;
@@ -86,10 +88,10 @@ router.post('/api/zalo/events', function (req, res, next) {
                   },
                   "message": ("Hello "+ username+"!")
                };
-               request.post(url, form: form, function(err,response,body){
+               request.post({url, form: form}, function(err,response,body){
                   if (err){
                      console.log(err);
-                     break;
+                     return;
                   }
                   
                });
