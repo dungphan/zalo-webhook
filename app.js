@@ -6,13 +6,13 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 var cors = require('cors');
 const router = express.Router();
-const tls = require('tls');
+const request = require('request');
 
 const http = require('http');
 //const https = require('https');
 // const options = {
-   // key: fs.readFileSync('./key.pem'),
-   // cert: fs.readFileSync('./cert.pem')
+// key: fs.readFileSync('./key.pem'),
+// cert: fs.readFileSync('./cert.pem')
 // };
 const app = express();
 const port = process.env.PORT || 8000;
@@ -47,69 +47,177 @@ app.get('/', function (req, res) {
 ///
 ///
 ///
+
+app.get('/api/zalo/request-token', function (req, res) {
+   //res.header("Access-Control-Allow-Origin", "*");
+   var url = 'https://oauth.zaloapp.com/v3/oa/permission?app_id=' + zaloAppId + '&redirect_uri=' + 'http://' + req.headers['host'] + '/api/zalo/token';
+   request(url, function (err, response, body) {
+      if (err)
+         console.log(err);
+
+   });
+   res.status(200).end();
+});
+
+// - /api/zalo/getuserinfo - Params: userid - Get user info from id
+app.get('/api/zalo/request-user-info', function (req,res, next) {
+
+   var userid = req.query.userid;
+   var form = {
+      "recipient": {
+         "user_id": userid
+      },
+      "message": {
+         "attachment": {
+            "payload": {
+               "elements": [{
+                     "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                     "subtitle": "Đang yêu cầu thông tin từ bạn",
+                     "title": "Bestaff test OA"
+                  }
+               ],
+               "template_type": "request_user_info"
+            },
+            "type": "template"
+         },
+         "text": "hello, world!"
+      }
+   };
+   var url = 'https://openapi.zalo.me/v2.0/oa/message?access_token=' + zaloAppToken;
+   request({
+      method: 'POST',
+      url: url,
+      headers: {
+         'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(form)
+   }, function (err, response, body) {
+      if (err) {
+         console.log(err);
+         return;
+      }
+      //console.log(body);
+   });
+
+});
+
+// - /api/zalo/messagetouser - Params: userid, message
+app.post('/api/zalo/message-to-user', function (req, res, next) {
+   var body = {
+      "recipient": {
+         "user_id": req.body.userid
+      },
+      "message": req.body.message
+   };
+   res.status(200).end();
+   //request.post({url:'http://service.com/upload', form: {key:'value'}}, function(err,httpResponse,body){ /* ... */ });
+});
+
+// - /api/zalo/broadcasttouser - Params: target, message
+app.post('/api/zalo/broadcast-to-user', function (req, res, next) {
+   var body = {
+      "recipient": {
+         "target": req.body.target
+      },
+      "message": req.body.message
+   };
+   //request.post({url:'http://service.com/upload', form: {key:'value'}}, function(err,httpResponse,body){ /* ... */ });
+   res.status(200).end();
+});
+
+///
+/// Zalo callback
+///
 app.get('/api/zalo/token', function (req, res) {
    //res.header("Access-Control-Allow-Origin", "*");
-   if (req.query.access_token && req.quey.oaId){
+   if (req.query.access_token && req.quey.oaId) {
       zaloAppToken = req.query.access_token;
       oaId = req.quey.oaId;
    }
    res.status(200).end();
 });
 
-app.get('/api/zalo/gettoken', function (req, res) {
-   //res.header("Access-Control-Allow-Origin", "*");
-   var url = 'https://oauth.zaloapp.com/v3/oa/permission?app_id='+zaloAppId+'&redirect_uri='+'http://' + req.headers['host'] + '/api/zalo/token';
-   request(url,function(err, response, body){
-      if (err)
-         console.log(err);
-      
-   });
-   res.status(200).end();
-});
-
+// Zalo events listener, always return status 200
 app.post('/api/zalo/events', function (req, res, next) {
-   console.log('body');
-   console.log(req.body);
+   res.status(200).end();
+   //console.log('body');
+   //console.log(req.body);
    if (!req.body.event_name)
-      return res.status(200).end();
+      return;
    switch (req.body.event_name) {
    case 'user_send_text': {
          //console.log(req.body.sender.id);
-         //break;
-         if (req.body.message.text.startsWith('hello')){
-            console.log('startsWith hello');
-            // say hi
-            res.status(200).end();
+         var userid = req.body.sender.id;
+         if (req.body.message.text.startsWith('hello')) {
+            //console.log('startsWith hello');
             // get user data
-            var userid = req.body.sender.id;
-            var url = 'https://openapi.zalo.me/v2.0/oa/getprofile?access_token='+zaloAppToken+'&data={"user_id":"'+userid+'"}';
-            request(url, function(err,response,body){
-               if (err){
+            var url = 'https://openapi.zalo.me/v2.0/oa/getprofile?access_token=' + zaloAppToken + '&data={"user_id":"' + userid + '"}';
+            request(url, function (err, response, body) {
+               if (err) {
                   console.log(err);
                   return;
                }
+               body = JSON.parse(body);
                var username = body.data.display_name;
+               var textBack = "Hello " + username + "!";
                // message back to user
-               var url = 'https://openapi.zalo.me/v2.0/oa/message?access_token='+zaloAppToken;
-               var form = {
-                  "recipient": {
-                     "user_id": userid
-                  },
-                  "message": ("Hello "+ username+"!")
+               var message = {
+                  "text": textBack
                };
-               request.post({url, form: form}, function(err,response,body){
-                  if (err){
-                     console.log(err);
-                     return;
-                  }
-                  
-               });
+               sendMessageToUser(userid, message);
             });
+         } else if (req.body.message.text.startsWith('checkin')) {
+            var dts = req.body.message.text.split(' ');
+            if (dts.length == 1){
+               var message = {
+                  "attachment": {
+                     "type": "template",
+                     "payload": {
+                        "template_type": "list",
+                        "elements": [{
+                              "title": "Phone Number Checkin",
+                              "subtitle": "Checkin",
+                              "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                              "default_action": {
+                                 "title": "QUERY HIDE",
+                                 "type": "oa.query.hide",
+                                 "payload": "#phonecheckin"
+                              }
+                           }, {
+                              "title": "UID Checkin",
+                              "subtitle": "Checkin",
+                              "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                              "default_action": {
+                                 "title": "QUERY HIDE",
+                                 "type": "oa.query.hide",
+                                 "payload": "#uidcheckin"
+                              }
+                           }
+                        ]
+                     }
+                  }
+               };
+               sendMessageToUser(userid, message);
+            } else if (dts.length == 2 && dts[1].length == 6){
+               var uid = 0;
+               try{
+                  uid = parseInt(dts[1]);
+               }catch(err){
+                  uid = 0;
+               }
+               if (uid > 0){
+                  var message = { "text": "Check in thanh cong!"};
+                  sendMessageToUser(userid, message);
+               }
+            }else{
+               var message = { "text": "Sai cu phap"};
+               sendMessageToUser(userid, message);
+            }
+         }else if (req.body.message.text == "#uidcheckin"){
+            var message = { "text": "Moi nhap theo cu phap: checkin [uid]"};
+            sendMessageToUser(userid, message);
          }
-         else if (req.body.message.text.startsWith('checkin')){
-            res.status(200).end();
-         }
-         return;
+         break;
       }
    case 'user_received_message': {
 
@@ -135,64 +243,54 @@ app.post('/api/zalo/events', function (req, res, next) {
 
          break;
       }
+   case 'user_submit_info': {
+         var userid = req.body.sender.id;
+         var userinfo = req.body.info;
+         var userphone = req.body.info.phone; // 84901234567
+         break;
+      }
    default:
       break;
    }
-   return res.status(200).end();
-});
 
-// - /api/zalo/messagetouser - Params: userid, message
-app.post('/api/zalo/messagetouser', function (req, res, next) {
-   var body = {
-      "recipient": {
-         "user_id": req.body.userid
-      },
-      "message": req.body.message
-   };
-   res.status(200).end();
-   //request.post({url:'http://service.com/upload', form: {key:'value'}}, function(err,httpResponse,body){ /* ... */ });
-});
-
-// - /api/zalo/broadcasttouser - Params: target, message
-app.post('/api/zalo/broadcasttouser', function (req, res, next) {
-   var body = {
-      "recipient": {
-         "target": req.body.target
-      },
-      "message": req.body.message
-   };
-   //request.post({url:'http://service.com/upload', form: {key:'value'}}, function(err,httpResponse,body){ /* ... */ });
-   res.status(200).end();
 });
 
 ///
 ///
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-   res.header("Access-Control-Allow-Origin", "*");
-   var err = new Error('Not Found');
-   err.status = 404;
-   next(err);
-});
-
-// development error handler - will print stacktrace
-if (app.get('env') === 'development') {
-   app.use(function (err, req, res, next) {
-      res.status(err.status || 500);
-      res.send(err.message);
+///
+function sendMessageToUser(userid, message) {
+   var url = 'https://openapi.zalo.me/v2.0/oa/message?access_token=' + zaloAppToken;
+   var form = {
+      "recipient": {
+         "user_id": userid
+      },
+      "message": message
+   };
+   //console.log(JSON.stringify(form));
+   request({
+      method: 'POST',
+      url: url,
+      headers: {
+         'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(form)
+   }, function (err, response, body) {
+      if (err) {
+         console.log(err);
+         return;
+      }
+      //console.log(body);
    });
 }
 
-// production error handler - no stacktraces leaked to user
-app.use(function (err, req, res, next) {
-   res.status(err.status || 500);
-   res.send(err.message);
-});
+///
+///
+///
 
 // don't show the log when it is test
-if(process.env.NODE_ENV !== 'test') {
-    //use morgan to log at command line
-    app.use(logger('combined')); //'combined' outputs the Apache style LOGs
+if (process.env.NODE_ENV !== 'test') {
+   //use morgan to log at command line
+   app.use(logger('combined')); //'combined' outputs the Apache style LOGs
 }
 
 server.listen(port);
