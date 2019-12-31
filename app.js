@@ -96,9 +96,9 @@ router.post('/api/zalo/events', function (req, res, next) {
             });
          }
          else if (body.message.text.startWiths('checkin')){
-            
+            res.status(200).end();
          }
-         break;
+         return;
       }
    case user_received_message: {
 
