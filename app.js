@@ -15,7 +15,7 @@ const options = {
    cert: fs.readFileSync('./cert.pem')
 };
 const app = express();
-var port = 443;
+const port = process.env.PORT || 3000;
 app.set('port', port);
 const server = https.createServer(options, app);
 //const server = http.createServer(app);
