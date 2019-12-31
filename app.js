@@ -68,9 +68,8 @@ app.get('/api/zalo/gettoken', function (req, res) {
 });
 
 app.post('/api/zalo/events', function (req, res, next) {
-   if (!req.body)
+   if (!req.body.event_name)
       return res.status(200).end();
-   var body = JSON.parse(req.body);
    switch (body.event_name) {
    case user_send_text: {
          if (body.message.text.startWiths('hello')){
