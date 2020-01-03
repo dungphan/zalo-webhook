@@ -7,9 +7,9 @@ const fs = require('fs');
 var cors = require('cors');
 const router = express.Router();
 const request = require('request');
-const redis = require('redis');
-const Promise = require('bluebird');
-Promise.promisifyAll(redis);
+// const redis = require('redis');
+// const Promise = require('bluebird');
+// Promise.promisifyAll(redis);
 
 const http = require('http');
 //const https = require('https');
@@ -34,19 +34,12 @@ function LoadData(){
    //console.log(global.oaId);
 }
 LoadData();
-var client = null;
-if (process.env.REDISTOGO_URL) {
-   var rtg   = require("url").parse(process.env.REDISTOGO_URL);
-   client = require("redis").createClient(rtg.port, rtg.hostname);
 
-   client.auth(rtg.auth.split(":")[1]);
-} else {
-   client = redis.createClient(6379);
-   client.on('error', (err) => {
-      console.log("Redis Error ");
-      console.log(err);
-   });
-}
+/* const client = redis.createClient(6379);
+client.on('error', (err) => {
+   console.log("Redis Error ");
+   console.log(err);
+}); */
 
 
 ///
@@ -180,13 +173,14 @@ app.post('/api/zalo/events', async function (req, res, next) {
    case 'user_send_text': {
          //console.log(req.body.sender.id);
          var userid = req.body.sender.id;
-         var userString = await client.getAsync(userid);
+         var userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
          var userData = null;
-         if (userString)
+         if (userString && userString.length > 0)
             userData = JSON.parse(userString);
          if (userData && userData.isWaitInfo){
             userData.isWaitInfo = false;
-            client.setAsync(userid, JSON.stringify(userData));
+            //client.setAsync(userid, JSON.stringify(userData));
+            fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userData));
          }
          if (req.body.message.text.startsWith('hello')) {
             //console.log('startsWith hello');
@@ -215,7 +209,8 @@ app.post('/api/zalo/events', async function (req, res, next) {
                   };
                   sendMessageToUser(userid, message);
                   var response = {name:username};
-                  client.setAsync(userid, JSON.stringify(response));
+                  //client.setAsync(userid, JSON.stringify(response));
+                  fs.writeFileSync('./'+userid+'.txt',JSON.stringify(response));
                });
             }
          }
@@ -278,7 +273,8 @@ app.post('/api/zalo/events', async function (req, res, next) {
                sendMessageToUser(userid, message);
                if (userData){
                   userData.isWaitInfo = true;
-                  client.setAsync(userid, JSON.stringify(userData));
+                  //client.setAsync(userid, JSON.stringify(userData));
+                  fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userData));
                }
             }
          }
@@ -342,9 +338,9 @@ app.post('/api/zalo/events', async function (req, res, next) {
          var userinfo = req.body.info;
          var userphone = req.body.info.phone; // 84901234567
          var userid = req.body.sender.id;
-         var userString = await client.getAsync(userid);
+         var userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
          var userData = null;
-         if (userString)
+         if (userString && userString.length>0)
             userData = JSON.parse(userString);
          if (userData){
             if (userData.isWaitInfo)
@@ -354,9 +350,11 @@ app.post('/api/zalo/events', async function (req, res, next) {
             userData.address = userinfo.address;
             userData.district = userinfo.district;
             userData.city = userinfo.city;
-            client.setAsync(userid, JSON.stringify(userData));
+            //client.setAsync(userid, JSON.stringify(userData));
+            fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userData));
          }else{
-            client.setAsync(userid, JSON.stringify(userinfo));
+            //client.setAsync(userid, JSON.stringify(userinfo));
+            fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userinfo));
          }
          break;
       }
