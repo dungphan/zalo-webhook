@@ -34,12 +34,20 @@ function LoadData(){
    //console.log(global.oaId);
 }
 LoadData();
+var client = null;
+if (process.env.REDISTOGO_URL) {
+   var rtg   = require("url").parse(process.env.REDISTOGO_URL);
+   client = require("redis").createClient(rtg.port, rtg.hostname);
 
-const client = redis.createClient(6379);
-client.on('error', (err) => {
-   console.log("Redis Error ");
-   console.log(err);
-});
+   client.auth(rtg.auth.split(":")[1]);
+} else {
+   client = redis.createClient(6379);
+   client.on('error', (err) => {
+      console.log("Redis Error ");
+      console.log(err);
+   });
+}
+
 
 ///
 app.use(function (req, res, next) {
