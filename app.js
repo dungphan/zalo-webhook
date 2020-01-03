@@ -145,9 +145,9 @@ app.post('/api/zalo/broadcast-to-user', function (req, res, next) {
 ///
 app.get('/api/zalo/token', function (req, res) {
    //res.header("Access-Control-Allow-Origin", "*");
-   if (req.query.access_token && req.quey.oaId) {
+   if (req.query.access_token && req.query.oaId) {
       global.zaloAppToken = req.query.access_token;
-      global.oaId = req.quey.oaId;
+      global.oaId = req.query.oaId;
       fs.writeFileSync('./token.txt',global.zaloAppToken,function(err){
          if (err)
             console.log(err);
