@@ -146,17 +146,17 @@ app.post('/api/zalo/broadcast-to-user', function (req, res, next) {
 app.get('/api/zalo/token', function (req, res) {
    //res.header("Access-Control-Allow-Origin", "*");
    if (req.query.access_token && req.quey.oaId) {
-      zaloAppToken = req.query.access_token;
-      oaId = req.quey.oaId;
-      fs.writeFileSync('./token.txt',zaloAppToken,function(err){
+      global.zaloAppToken = req.query.access_token;
+      global.oaId = req.quey.oaId;
+      fs.writeFileSync('./token.txt',global.zaloAppToken,function(err){
          if (err)
             console.log(err);
       });
-      fs.writeFileSync('./oaid.txt',oaId,function(err){
+      fs.writeFileSync('./oaid.txt',global.oaId,function(err){
          if (err)
             console.log(err);
       });
-      return res.status(200).send(zaloAppToken);
+      return res.status(200).send(global.zaloAppToken);
    }
    res.status(200).end();
 });
