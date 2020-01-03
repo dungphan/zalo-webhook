@@ -7,6 +7,9 @@ const fs = require('fs');
 var cors = require('cors');
 const router = express.Router();
 const request = require('request');
+const redis = require('redis');
+const Promise = require('bluebird');
+Promise.promisifyAll(redis);
 
 const http = require('http');
 //const https = require('https');
@@ -24,8 +27,20 @@ app.use(cors());
 
 ///
 global.zaloAppId = '1998844287528533439';
-global.zaloAppToken = 'nrBD9cEw8WZAMCqbOheY2inPmIDefsTVnJ7K73JCSZBsMjGQBk4oKCjSi7Ck-oX4Yr6P4K7jDasg2ueVM9ytSOC3aXzjdtP3Wmph8rUDTqoI0iqLDuPkGFqXppSCc4ztuJ3z6JAKRbNSQOqQCUyIRFzRe3GFmnru_qEh3L7O37IMIhyaFU0YIlf8mYOer2H_ntAc43Bd9atZSBHaFTKABTCqw7meXNS9xppNPGFRCHteIDvzHijMKBaimpiGfcH-ua27BYlbAcxmNimR1TThSZYTqDSQQQmh1G';
-global.oaId = '';
+function LoadData(){
+   global.zaloAppToken = fs.readFileSync('./token.txt',"utf8");
+   //console.log(global.zaloAppToken);
+   global.oaId = fs.readFileSync('./oaid.txt',"utf8");
+   //console.log(global.oaId);
+}
+LoadData();
+
+const client = redis.createClient(6379);
+client.on('error', (err) => {
+   console.log("Redis Error ");
+   console.log(err);
+});
+
 ///
 app.use(function (req, res, next) {
    res.header("Access-Control-Allow-Origin", "*");
@@ -133,12 +148,21 @@ app.get('/api/zalo/token', function (req, res) {
    if (req.query.access_token && req.quey.oaId) {
       zaloAppToken = req.query.access_token;
       oaId = req.quey.oaId;
+      fs.writeFileSync('./token.txt',zaloAppToken,function(err){
+         if (err)
+            console.log(err);
+      });
+      fs.writeFileSync('./oaid.txt',oaId,function(err){
+         if (err)
+            console.log(err);
+      });
+      return res.status(200).send(zaloAppToken);
    }
    res.status(200).end();
 });
 
 // Zalo events listener, always return status 200
-app.post('/api/zalo/events', function (req, res, next) {
+app.post('/api/zalo/events', async function (req, res, next) {
    res.status(200).end();
    //console.log('body');
    //console.log(req.body);
@@ -148,74 +172,136 @@ app.post('/api/zalo/events', function (req, res, next) {
    case 'user_send_text': {
          //console.log(req.body.sender.id);
          var userid = req.body.sender.id;
+         var userString = await client.getAsync(userid);
+         var userData = null;
+         if (userString)
+            userData = JSON.parse(userString);
+         if (userData && userData.isWaitInfo){
+            userData.isWaitInfo = false;
+            client.setAsync(userid, JSON.stringify(userData));
+         }
          if (req.body.message.text.startsWith('hello')) {
             //console.log('startsWith hello');
-            // get user data
-            var url = 'https://openapi.zalo.me/v2.0/oa/getprofile?access_token=' + zaloAppToken + '&data={"user_id":"' + userid + '"}';
-            request(url, function (err, response, body) {
-               if (err) {
-                  console.log(err);
-                  return;
-               }
-               body = JSON.parse(body);
-               var username = body.data.display_name;
+            if (userData) {
+               var username = userData.name;
                var textBack = "Hello " + username + "!";
                // message back to user
                var message = {
                   "text": textBack
                };
                sendMessageToUser(userid, message);
-            });
-         } else if (req.body.message.text.startsWith('checkin')) {
-            var dts = req.body.message.text.split(' ');
-            if (dts.length == 1){
-               var message = {
+            }else{
+               // get user data
+               var url = 'https://openapi.zalo.me/v2.0/oa/getprofile?access_token=' + zaloAppToken + '&data={"user_id":"' + userid + '"}';
+               request(url, function (err, response, body) {
+                  if (err) {
+                     console.log(err);
+                     return;
+                  }
+                  body = JSON.parse(body);
+                  var username = body.data.display_name;
+                  var textBack = "Hello " + username + "!";
+                  // message back to user
+                  var message = {
+                     "text": textBack
+                  };
+                  sendMessageToUser(userid, message);
+                  var response = {name:username};
+                  client.setAsync(userid, JSON.stringify(response));
+               });
+            }
+         }
+         else if (req.body.message.text.startsWith('checkin')) {
+            var message = {
+               "attachment": {
+                  "type": "template",
+                  "payload": {
+                     "template_type": "list",
+                     "elements": [{
+                           "title": "Phone Number Checkin",
+                           "subtitle": "Checkin",
+                           "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                           "default_action": {
+                              "title": "QUERY HIDE",
+                              "type": "oa.query.hide",
+                              "payload": "#phonecheckin"
+                           }
+                        }, {
+                           "title": "UID Checkin",
+                           "subtitle": "Checkin",
+                           "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                           "default_action": {
+                              "title": "QUERY HIDE",
+                              "type": "oa.query.hide",
+                              "payload": "#uidcheckin"
+                           }
+                        }
+                     ]
+                  }
+               }
+            };
+            sendMessageToUser(userid, message);
+         }
+         else if (req.body.message.text == "#uidcheckin"){
+            var message = { "text": "Moi nhap theo cu phap: #checkin [uid]"};
+            sendMessageToUser(userid, message);
+         }
+         else if (req.body.message.text == "#phonecheckin"){
+            if (userData && userData.phone) {
+               var phone = userData.phone;
+               // checkin by phone
+               userCheckinPhone(userid,phone);
+            }else{
+               // ask for info
+               var message = { 
+                  "text": "hello, world!",
                   "attachment": {
                      "type": "template",
                      "payload": {
-                        "template_type": "list",
+                        "template_type": "request_user_info",
                         "elements": [{
-                              "title": "Phone Number Checkin",
-                              "subtitle": "Checkin",
-                              "image_url": "https://developers.zalo.me/web/static/zalo.png",
-                              "default_action": {
-                                 "title": "QUERY HIDE",
-                                 "type": "oa.query.hide",
-                                 "payload": "#phonecheckin"
-                              }
-                           }, {
-                              "title": "UID Checkin",
-                              "subtitle": "Checkin",
-                              "image_url": "https://developers.zalo.me/web/static/zalo.png",
-                              "default_action": {
-                                 "title": "QUERY HIDE",
-                                 "type": "oa.query.hide",
-                                 "payload": "#uidcheckin"
-                              }
-                           }
-                        ]
+                           "title": "Bestaff Test OA",
+                           "subtitle": "Chia sẻ số điện thoại để checkin hoặc nhắn theo cú pháp #checkin [phone].",
+                           "image_url": "https://developers.zalo.me/web/static/zalo.png"
+                        }]
                      }
                   }
                };
                sendMessageToUser(userid, message);
-            } else if (dts.length == 2 && dts[1].length == 6){
-               var uid = 0;
-               try{
-                  uid = parseInt(dts[1]);
-               }catch(err){
-                  uid = 0;
+               if (userData){
+                  userData.isWaitInfo = true;
+                  client.setAsync(userid, JSON.stringify(userData));
                }
-               if (uid > 0){
-                  var message = { "text": "Check in thanh cong!"};
+            }
+         }
+         else if (req.body.message.text.startsWith("#checkin")){
+            var dts = req.body.message.text.split(' ');
+            if (dts.length == 2){
+               if (dts[1].length == 6){
+                  // uid
+                  var uid = 0;
+                  try{
+                     uid = parseInt(dts[1]);
+                  }catch(err){
+                     uid = 0;
+                  }
+                  if (uid > 0){
+                     userCheckinUid(userid,uid);
+                  }else{
+                     var message = { "text": "Uid khong dung"};
+                     sendMessageToUser(userid, message);
+                  }
+               }else if (dts[1].length == 10){
+                  var phone = "84" + dts[1].substr(1); // 84905112233
+                  userCheckinPhone(userid,phone);
+               }else{
+                  var message = { "text": "Sai cu phap"};
                   sendMessageToUser(userid, message);
                }
             }else{
                var message = { "text": "Sai cu phap"};
                sendMessageToUser(userid, message);
             }
-         }else if (req.body.message.text == "#uidcheckin"){
-            var message = { "text": "Moi nhap theo cu phap: checkin [uid]"};
-            sendMessageToUser(userid, message);
          }
          break;
       }
@@ -247,6 +333,23 @@ app.post('/api/zalo/events', function (req, res, next) {
          var userid = req.body.sender.id;
          var userinfo = req.body.info;
          var userphone = req.body.info.phone; // 84901234567
+         var userid = req.body.sender.id;
+         var userString = await client.getAsync(userid);
+         var userData = null;
+         if (userString)
+            userData = JSON.parse(userString);
+         if (userData){
+            if (userData.isWaitInfo)
+               userData.isWaitInfo = false;
+            userData.name = userinfo.name;
+            userData.phone = userinfo.phone;
+            userData.address = userinfo.address;
+            userData.district = userinfo.district;
+            userData.city = userinfo.city;
+            client.setAsync(userid, JSON.stringify(userData));
+         }else{
+            client.setAsync(userid, JSON.stringify(userinfo));
+         }
          break;
       }
    default:
@@ -283,6 +386,19 @@ function sendMessageToUser(userid, message) {
    });
 }
 
+function userSendText(){
+   
+}
+
+function userCheckinUid(userid,uid){
+   var message = { "text": "Check in thanh cong!"};
+   sendMessageToUser(userid, message);
+}
+
+function userCheckinPhone(userid,phone){
+   var message = { "text": "Check in thanh cong!"};
+   sendMessageToUser(userid, message);
+}
 ///
 ///
 ///
