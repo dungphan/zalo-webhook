@@ -173,7 +173,12 @@ app.post('/api/zalo/events', async function (req, res, next) {
    case 'user_send_text': {
          //console.log(req.body.sender.id);
          var userid = req.body.sender.id;
-         var userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
+         var userString = null;
+         try{         
+            userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
+         }catch(err){
+            console.log(err);
+         }
          var userData = null;
          if (userString && userString.length > 0)
             userData = JSON.parse(userString);
@@ -338,7 +343,12 @@ app.post('/api/zalo/events', async function (req, res, next) {
          var userinfo = req.body.info;
          var userphone = req.body.info.phone; // 84901234567
          var userid = req.body.sender.id;
-         var userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
+         var userString = null;
+         try{
+            userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
+         }catch(err){
+            console.log(err);
+         }
          var userData = null;
          if (userString && userString.length>0)
             userData = JSON.parse(userString);
