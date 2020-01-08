@@ -312,6 +312,10 @@ app.post('/api/zalo/events', async function (req, res, next) {
                sendMessageToUser(userid, message);
             }
          }
+         else if (req.body.message.text == "#news"){
+            // fetch news
+            userFetchNews(userid);
+         }
          break;
       }
    case 'user_received_message': {
@@ -323,7 +327,52 @@ app.post('/api/zalo/events', async function (req, res, next) {
          break;
       }
    case 'follow': {
-
+      var userid = req.body.follower.id;
+      var message = {
+            "attachment": {
+               "type": "template",
+               "payload": {
+                  "template_type": "list",
+                  "elements": [{
+                      "title": "Chao mung den voi bestaff",
+                      "subtitle": "Bestaff la ung dung cham cong va quan ly nhan su",
+                      "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                      "default_action": {
+                          "type": "oa.open.url",
+                          "url": "https://developers.zalo.me/"
+                          }
+                  },
+                  {
+                      "title": "Cach dang ki thanh vien quan",
+                      "subtitle": "Cach dang ki thanh vien quan",
+                      "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                      "default_action": {
+                          "type": "oa.open.url",
+                          "url": "https://developers.zalo.me/"
+                          }
+                  },
+                  {
+                      "title": "Huong dan su dung bot",
+                      "subtitle": "Huong dan su dung bot",
+                      "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                      "default_action": {
+                          "type": "oa.open.url",
+                          "url": "https://developers.zalo.me/"
+                          }
+                  },
+                  {
+                      "title": "Ve bestaff",
+                      "subtitle": "Ve bestaff",
+                      "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                      "default_action": {
+                          "type": "oa.open.url",
+                          "url": "https://developers.zalo.me/"
+                          }
+                  }]
+               }
+            }
+         };
+         sendMessageToUser(userid, message);
          break;
       }
    case 'oa_send_text': {
@@ -413,6 +462,31 @@ function userCheckinUid(userid,uid){
 
 function userCheckinPhone(userid,phone){
    var message = { "text": "Check in thanh cong!"};
+   sendMessageToUser(userid, message);
+}
+
+function userFetchNews(userid){
+   var elements = [];
+   for (var q = 0; q < 5; q++){
+      elements[q] = {
+                "title": "Thong bao "+(q+1),
+                "subtitle": "Zalo API cung cấp các công cụ để bạn có thể kết nối thanh chóng và hiệu quả",
+                "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                "default_action": {
+                    "type": "oa.open.url",
+                    "url": "https://developers.zalo.me/"
+                    }
+            };
+   }
+   var message = { 
+      "attachment": {
+        "type": "template",
+        "payload": {
+            "template_type": "list",
+            "elements": elements
+         }
+      }
+    };
    sendMessageToUser(userid, message);
 }
 ///
