@@ -117,27 +117,35 @@ app.get('/api/zalo/request-user-info', function (req,res, next) {
 
 });
 
-// - /api/zalo/messagetouser - Params: userid, message
+// - /api/zalo/message-to-user - Params: userid, message
 app.post('/api/zalo/message-to-user', function (req, res, next) {
-   var body = {
-      "recipient": {
-         "user_id": req.body.userid
-      },
-      "message": req.body.message
-   };
    res.status(200).end();
-   //request.post({url:'http://service.com/upload', form: {key:'value'}}, function(err,httpResponse,body){ /* ... */ });
+   sendMessageToUser(req.body.userid, req.body.message);
 });
 
-// - /api/zalo/broadcasttouser - Params: target, message
+// - /api/zalo/broadcast-to-user - Params: target, message
 app.post('/api/zalo/broadcast-to-user', function (req, res, next) {
-   var body = {
+   var form = {
       "recipient": {
          "target": req.body.target
       },
       "message": req.body.message
    };
-   //request.post({url:'http://service.com/upload', form: {key:'value'}}, function(err,httpResponse,body){ /* ... */ });
+   var url = 'https://openapi.zalo.me/v2.0/oa/message?access_token=' + zaloAppToken;
+   request({
+      method: 'POST',
+      url: url,
+      headers: {
+         'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(form)
+   }, function (err, response, body) {
+      if (err) {
+         console.log(err);
+         return;
+      }
+      //console.log(body);
+   });
    res.status(200).end();
 });
 
@@ -171,151 +179,7 @@ app.post('/api/zalo/events', async function (req, res, next) {
       return;
    switch (req.body.event_name) {
    case 'user_send_text': {
-         //console.log(req.body.sender.id);
-         var userid = req.body.sender.id;
-         var userString = null;
-         try{         
-            userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
-         }catch(err){
-            console.log(err);
-         }
-         var userData = null;
-         if (userString && userString.length > 0)
-            userData = JSON.parse(userString);
-         if (userData && userData.isWaitInfo){
-            userData.isWaitInfo = false;
-            //client.setAsync(userid, JSON.stringify(userData));
-            fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userData));
-         }
-         if (req.body.message.text.startsWith('hello')) {
-            //console.log('startsWith hello');
-            if (userData) {
-               var username = userData.name;
-               var textBack = "Hello " + username + "!";
-               // message back to user
-               var message = {
-                  "text": textBack
-               };
-               sendMessageToUser(userid, message);
-            }else{
-               // get user data
-               var url = 'https://openapi.zalo.me/v2.0/oa/getprofile?access_token=' + zaloAppToken + '&data={"user_id":"' + userid + '"}';
-               request(url, function (err, response, body) {
-                  if (err) {
-                     console.log(err);
-                     return;
-                  }
-                  body = JSON.parse(body);
-                  var username = body.data.display_name;
-                  var textBack = "Hello " + username + "!";
-                  // message back to user
-                  var message = {
-                     "text": textBack
-                  };
-                  sendMessageToUser(userid, message);
-                  var response = {name:username};
-                  //client.setAsync(userid, JSON.stringify(response));
-                  fs.writeFileSync('./'+userid+'.txt',JSON.stringify(response));
-               });
-            }
-         }
-         else if (req.body.message.text.startsWith('checkin')) {
-            var message = {
-               "attachment": {
-                  "type": "template",
-                  "payload": {
-                     "template_type": "list",
-                     "elements": [{
-                           "title": "Phone Number Checkin",
-                           "subtitle": "Checkin",
-                           "image_url": "https://developers.zalo.me/web/static/zalo.png",
-                           "default_action": {
-                              "title": "QUERY HIDE",
-                              "type": "oa.query.hide",
-                              "payload": "#phonecheckin"
-                           }
-                        }, {
-                           "title": "UID Checkin",
-                           "subtitle": "Checkin",
-                           "image_url": "https://developers.zalo.me/web/static/zalo.png",
-                           "default_action": {
-                              "title": "QUERY HIDE",
-                              "type": "oa.query.hide",
-                              "payload": "#uidcheckin"
-                           }
-                        }
-                     ]
-                  }
-               }
-            };
-            sendMessageToUser(userid, message);
-         }
-         else if (req.body.message.text == "#uidcheckin"){
-            var message = { "text": "Moi nhap theo cu phap: #checkin [uid]"};
-            sendMessageToUser(userid, message);
-         }
-         else if (req.body.message.text == "#phonecheckin"){
-            if (userData && userData.phone) {
-               var phone = userData.phone;
-               // checkin by phone
-               userCheckinPhone(userid,phone);
-            }else{
-               // ask for info
-               var message = { 
-                  "text": "hello, world!",
-                  "attachment": {
-                     "type": "template",
-                     "payload": {
-                        "template_type": "request_user_info",
-                        "elements": [{
-                           "title": "Bestaff Test OA",
-                           "subtitle": "Chia sẻ số điện thoại để checkin hoặc nhắn theo cú pháp #checkin [phone].",
-                           "image_url": "https://developers.zalo.me/web/static/zalo.png"
-                        }]
-                     }
-                  }
-               };
-               sendMessageToUser(userid, message);
-               if (userData){
-                  userData.isWaitInfo = true;
-                  //client.setAsync(userid, JSON.stringify(userData));
-                  fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userData));
-               }
-            }
-         }
-         else if (req.body.message.text.startsWith("#checkin")){
-            var dts = req.body.message.text.split(' ');
-            if (dts.length == 2){
-               if (dts[1].length == 6){
-                  // uid
-                  var uid = 0;
-                  try{
-                     uid = parseInt(dts[1]);
-                  }catch(err){
-                     uid = 0;
-                  }
-                  if (uid > 0){
-                     userCheckinUid(userid,uid);
-                  }else{
-                     var message = { "text": "Uid khong dung"};
-                     sendMessageToUser(userid, message);
-                  }
-               }else if (dts[1].length == 10){
-                  var phone = "84" + dts[1].substr(1); // 84905112233
-                  userCheckinPhone(userid,phone);
-               }else{
-                  var message = { "text": "Sai cu phap"};
-                  sendMessageToUser(userid, message);
-               }
-            }else{
-               var message = { "text": "Sai cu phap"};
-               sendMessageToUser(userid, message);
-            }
-         }
-         else if (req.body.message.text == "#news"){
-            // fetch news
-            userFetchNews(userid);
-         }
+         userSendText(req.body);
          break;
       }
    case 'user_received_message': {
@@ -327,52 +191,7 @@ app.post('/api/zalo/events', async function (req, res, next) {
          break;
       }
    case 'follow': {
-      var userid = req.body.follower.id;
-      var message = {
-            "attachment": {
-               "type": "template",
-               "payload": {
-                  "template_type": "list",
-                  "elements": [{
-                      "title": "Chao mung den voi bestaff",
-                      "subtitle": "Bestaff la ung dung cham cong va quan ly nhan su",
-                      "image_url": "https://developers.zalo.me/web/static/zalo.png",
-                      "default_action": {
-                          "type": "oa.open.url",
-                          "url": "https://developers.zalo.me/"
-                          }
-                  },
-                  {
-                      "title": "Cach dang ki thanh vien quan",
-                      "subtitle": "Cach dang ki thanh vien quan",
-                      "image_url": "https://developers.zalo.me/web/static/zalo.png",
-                      "default_action": {
-                          "type": "oa.open.url",
-                          "url": "https://developers.zalo.me/"
-                          }
-                  },
-                  {
-                      "title": "Huong dan su dung bot",
-                      "subtitle": "Huong dan su dung bot",
-                      "image_url": "https://developers.zalo.me/web/static/zalo.png",
-                      "default_action": {
-                          "type": "oa.open.url",
-                          "url": "https://developers.zalo.me/"
-                          }
-                  },
-                  {
-                      "title": "Ve bestaff",
-                      "subtitle": "Ve bestaff",
-                      "image_url": "https://developers.zalo.me/web/static/zalo.png",
-                      "default_action": {
-                          "type": "oa.open.url",
-                          "url": "https://developers.zalo.me/"
-                          }
-                  }]
-               }
-            }
-         };
-         sendMessageToUser(userid, message);
+         userFollow(req.body);
          break;
       }
    case 'oa_send_text': {
@@ -388,33 +207,7 @@ app.post('/api/zalo/events', async function (req, res, next) {
          break;
       }
    case 'user_submit_info': {
-         var userid = req.body.sender.id;
-         var userinfo = req.body.info;
-         var userphone = req.body.info.phone; // 84901234567
-         var userid = req.body.sender.id;
-         var userString = null;
-         try{
-            userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
-         }catch(err){
-            console.log(err);
-         }
-         var userData = null;
-         if (userString && userString.length>0)
-            userData = JSON.parse(userString);
-         if (userData){
-            if (userData.isWaitInfo)
-               userData.isWaitInfo = false;
-            userData.name = userinfo.name;
-            userData.phone = userinfo.phone;
-            userData.address = userinfo.address;
-            userData.district = userinfo.district;
-            userData.city = userinfo.city;
-            //client.setAsync(userid, JSON.stringify(userData));
-            fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userData));
-         }else{
-            //client.setAsync(userid, JSON.stringify(userinfo));
-            fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userinfo));
-         }
+         userSubmitInfo(req.body);
          break;
       }
    default:
@@ -451,8 +244,244 @@ function sendMessageToUser(userid, message) {
    });
 }
 
-function userSendText(){
-   
+function userSendText(body){
+   //console.log(body.sender.id);
+   var userid = body.sender.id;
+   var userString = null;
+   try{         
+      userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
+   }catch(err){
+      console.log(err);
+   }
+   var userData = null;
+   if (userString && userString.length > 0)
+      userData = JSON.parse(userString);
+   if (userData && userData.isWaitInfo){
+      userData.isWaitInfo = false;
+      //client.setAsync(userid, JSON.stringify(userData));
+      fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userData));
+   }
+   if (body.message.text.startsWith('hello')) {
+      //console.log('startsWith hello');
+      if (userData) {
+         var username = userData.name;
+         var textBack = "Hello " + username + "!";
+         // message back to user
+         var message = {
+            "text": textBack
+         };
+         sendMessageToUser(userid, message);
+      }else{
+         // get user data
+         var url = 'https://openapi.zalo.me/v2.0/oa/getprofile?access_token=' + zaloAppToken + '&data={"user_id":"' + userid + '"}';
+         request(url, function (err, response, body) {
+            if (err) {
+               console.log(err);
+               return;
+            }
+            body = JSON.parse(body);
+            var username = body.data.display_name;
+            var textBack = "Hello " + username + "!";
+            // message back to user
+            var message = {
+               "text": textBack
+            };
+            sendMessageToUser(userid, message);
+            var response = {name:username};
+            //client.setAsync(userid, JSON.stringify(response));
+            fs.writeFileSync('./'+userid+'.txt',JSON.stringify(response));
+         });
+      }
+   }
+   else if (body.message.text.startsWith('checkin')) {
+      var message = {
+         "attachment": {
+            "type": "template",
+            "payload": {
+               "template_type": "list",
+               "elements": [{
+                     "title": "Phone Number Checkin",
+                     "subtitle": "Checkin",
+                     "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                     "default_action": {
+                        "title": "QUERY HIDE",
+                        "type": "oa.query.hide",
+                        "payload": "#phonecheckin"
+                     }
+                  }, {
+                     "title": "UID Checkin",
+                     "subtitle": "Checkin",
+                     "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                     "default_action": {
+                        "title": "QUERY HIDE",
+                        "type": "oa.query.hide",
+                        "payload": "#uidcheckin"
+                     }
+                  }
+               ]
+            }
+         }
+      };
+      sendMessageToUser(userid, message);
+   }
+   else if (body.message.text == "#uidcheckin"){
+      var message = { "text": "Moi nhap theo cu phap: #checkin [uid]"};
+      sendMessageToUser(userid, message);
+   }
+   else if (body.message.text == "#phonecheckin"){
+      if (userData && userData.phone) {
+         var phone = userData.phone;
+         // checkin by phone
+         userCheckinPhone(userid,phone);
+      }else{
+         // ask for info
+         var message = { 
+            "text": "hello, world!",
+            "attachment": {
+               "type": "template",
+               "payload": {
+                  "template_type": "request_user_info",
+                  "elements": [{
+                     "title": "Bestaff Test OA",
+                     "subtitle": "Chia sẻ số điện thoại để checkin hoặc nhắn theo cú pháp #checkin [phone].",
+                     "image_url": "https://developers.zalo.me/web/static/zalo.png"
+                  }]
+               }
+            }
+         };
+         sendMessageToUser(userid, message);
+         if (userData){
+            userData.isWaitInfo = true;
+            //client.setAsync(userid, JSON.stringify(userData));
+            fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userData));
+         }
+      }
+   }
+   else if (body.message.text.startsWith("#checkin")){
+      var dts = body.message.text.split(' ');
+      if (dts.length == 2){
+         if (dts[1].length == 6){
+            // uid
+            var uid = 0;
+            try{
+               uid = parseInt(dts[1]);
+            }catch(err){
+               uid = 0;
+            }
+            if (uid > 0){
+               userCheckinUid(userid,uid);
+            }else{
+               var message = { "text": "Uid khong dung"};
+               sendMessageToUser(userid, message);
+            }
+         }else if (dts[1].length == 10){
+            var phone = "84" + dts[1].substr(1); // 84905112233
+            userCheckinPhone(userid,phone);
+         }else{
+            var message = { "text": "Sai cu phap"};
+            sendMessageToUser(userid, message);
+         }
+      }else{
+         var message = { "text": "Sai cu phap"};
+         sendMessageToUser(userid, message);
+      }
+   }
+   else if (body.message.text == "#news"){
+      // fetch news
+      userFetchNews(userid);
+   }
+   else if (body.message.text == "#timesheet"){
+      // fetch timesheet
+      userFetchTimesheet(userid);
+   }
+   else if (body.message.text == "testwelcome"){
+      // fetch timesheet
+      var res = {
+         follower: {
+            id : body.sender.id
+         }
+      };
+      userFollow(res);
+   }
+}
+
+function userFollow(body){
+   var userid = body.follower.id;
+   var message = {
+      "attachment": {
+         "type": "template",
+         "payload": {
+            "template_type": "list",
+            "elements": [{
+                "title": "Chao mung den voi bestaff",
+                "subtitle": "Bestaff la ung dung cham cong va quan ly nhan su",
+                "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                "default_action": {
+                    "type": "oa.open.url",
+                    "url": "https://developers.zalo.me/"
+                    }
+            },
+            {
+                "title": "Cach dang ki thanh vien quan",
+                "subtitle": "Cach dang ki thanh vien quan",
+                "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                "default_action": {
+                    "type": "oa.open.url",
+                    "url": "https://developers.zalo.me/"
+                    }
+            },
+            {
+                "title": "Huong dan su dung bot",
+                "subtitle": "Huong dan su dung bot",
+                "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                "default_action": {
+                    "type": "oa.open.url",
+                    "url": "https://developers.zalo.me/"
+                    }
+            },
+            {
+                "title": "Ve bestaff",
+                "subtitle": "Ve bestaff",
+                "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                "default_action": {
+                    "type": "oa.open.url",
+                    "url": "https://developers.zalo.me/"
+                    }
+            }]
+         }
+      }
+   };
+   sendMessageToUser(userid, message);
+}
+
+function userSubmitInfo(body){
+   var userid = body.sender.id;
+   var userinfo = body.info;
+   var userphone = body.info.phone; // 84901234567
+   var userid = body.sender.id;
+   var userString = null;
+   try{
+      userString = fs.readFileSync('./'+userid+'.txt',"utf8");//await client.getAsync(userid);
+   }catch(err){
+      console.log(err);
+   }
+   var userData = null;
+   if (userString && userString.length>0)
+      userData = JSON.parse(userString);
+   if (userData){
+      if (userData.isWaitInfo)
+         userData.isWaitInfo = false;
+      userData.name = userinfo.name;
+      userData.phone = userinfo.phone;
+      userData.address = userinfo.address;
+      userData.district = userinfo.district;
+      userData.city = userinfo.city;
+      //client.setAsync(userid, JSON.stringify(userData));
+      fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userData));
+   }else{
+      //client.setAsync(userid, JSON.stringify(userinfo));
+      fs.writeFileSync('./'+userid+'.txt',JSON.stringify(userinfo));
+   }
 }
 
 function userCheckinUid(userid,uid){
@@ -470,6 +499,31 @@ function userFetchNews(userid){
    for (var q = 0; q < 5; q++){
       elements[q] = {
                 "title": "Thong bao "+(q+1),
+                "subtitle": "Zalo API cung cấp các công cụ để bạn có thể kết nối thanh chóng và hiệu quả",
+                "image_url": "https://developers.zalo.me/web/static/zalo.png",
+                "default_action": {
+                    "type": "oa.open.url",
+                    "url": "https://developers.zalo.me/"
+                    }
+            };
+   }
+   var message = { 
+      "attachment": {
+        "type": "template",
+        "payload": {
+            "template_type": "list",
+            "elements": elements
+         }
+      }
+    };
+   sendMessageToUser(userid, message);
+}
+
+function userFetchTimesheet(userid){
+   var elements = [];
+   for (var q = 0; q < 5; q++){
+      elements[q] = {
+                "title": "Lich su "+(q+1),
                 "subtitle": "Zalo API cung cấp các công cụ để bạn có thể kết nối thanh chóng và hiệu quả",
                 "image_url": "https://developers.zalo.me/web/static/zalo.png",
                 "default_action": {
