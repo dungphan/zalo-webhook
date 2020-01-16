@@ -7,7 +7,7 @@ const fs = require('fs');
 var cors = require('cors');
 const router = express.Router();
 const request = require('request');
-const redis = require('redis');
+//const redis = require('redis');
 const Promise = require('bluebird');
 Promise.promisifyAll(redis);
 
@@ -35,11 +35,11 @@ function LoadData(){
 }
 LoadData();
 
-const client = redis.createClient(6379);
+/* const client = redis.createClient(6379);
 client.on('error', (err) => {
    console.log("Redis Error ");
    console.log(err);
-});
+}); */
 
 
 ///
@@ -249,7 +249,7 @@ async function userSendText(body){
    var userid = body.sender.id;
    var userString = null;
    try{         
-      userString = await client.getAsync(userid);
+      userString = "";//await client.getAsync(userid);
    }catch(err){
       console.log(err);
    }
@@ -258,7 +258,7 @@ async function userSendText(body){
       userData = JSON.parse(userString);
    if (userData && userData.isWaitInfo){
       userData.isWaitInfo = false;
-      client.setAsync(userid, JSON.stringify(userData));
+      //client.setAsync(userid, JSON.stringify(userData));
    }
    if (body.message.text.startsWith('hello')) {
       //console.log('startsWith hello');
@@ -286,8 +286,8 @@ async function userSendText(body){
                "text": textBack
             };
             sendMessageToUser(userid, message);
-            var response = {name:username};
-            client.setAsync(userid, JSON.stringify(response));
+            //var response = {name:username};
+            //client.setAsync(userid, JSON.stringify(response));
          });
       }
    }
@@ -440,7 +440,7 @@ async function userSubmitInfo(body){
    var userid = body.sender.id;
    var userString = null;
    try{
-      userString = await client.getAsync(userid);
+      userString = "";//await client.getAsync(userid);
    }catch(err){
       console.log(err);
    }
@@ -455,9 +455,9 @@ async function userSubmitInfo(body){
       userData.address = userinfo.address;
       userData.district = userinfo.district;
       userData.city = userinfo.city;
-      client.setAsync(userid, JSON.stringify(userData));
+      //client.setAsync(userid, JSON.stringify(userData));
    }else{
-      client.setAsync(userid, JSON.stringify(userinfo));
+      //client.setAsync(userid, JSON.stringify(userinfo));
    }
 }
 
@@ -547,7 +547,7 @@ function requestUserInfo(userid, userData){
    sendMessageToUser(userid, message);
    if (userData){
       userData.isWaitInfo = true;
-      client.setAsync(userid, JSON.stringify(userData));
+      //client.setAsync(userid, JSON.stringify(userData));
    }
 }
 ///
