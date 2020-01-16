@@ -9,7 +9,7 @@ const router = express.Router();
 const request = require('request');
 //const redis = require('redis');
 const Promise = require('bluebird');
-Promise.promisifyAll(redis);
+//Promise.promisifyAll(redis);
 
 const http = require('http');
 //const https = require('https');
