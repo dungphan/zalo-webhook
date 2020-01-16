@@ -4,7 +4,7 @@
   "description": "this is zalo webhook for chatbot",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha --timeout 10000 --exit",
     "start": "node app.js"
   },
   "repository": {
@@ -29,5 +29,11 @@
     "request": "^2.88.0",
     "serve-favicon": "^2.5.0",
     "tls": "0.0.1"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-http": "^4.3.0",
+    "eslint": "^6.8.0",
+    "mocha": "^6.2.2"
   }
 }
